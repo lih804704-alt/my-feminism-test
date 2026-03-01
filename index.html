@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>女性主义思想倾向测试 | Feminist Perspectives Quiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a1a;
+            --accent-color: #333333;
+            --border-color: #eeeeee;
+            --gray-text: #888888;
+        }
+
+        body {
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 600px;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-bottom: 40px;
+        }
+        .progress-text {
+            font-size: 0.9rem;
+            color: var(--gray-text);
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        .progress-bar {
+            height: 2px;
+            background: var(--border-color);
+            width: 100%;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-color);
+            transition: width 0.3s ease;
+        }
+
+        /* 题目样式 */
+        .question-section h2 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 40px;
+            min-height: 4em;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+            border-radius: 4px;
+        }
+
+        .option-btn:hover {
+            background-color: #f9f9f9;
+            border-color: var(--accent-color);
+        }
+
+        .option-school {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--gray-text);
+            margin-top: 8px;
+        }
+
+        /* 导航按钮 */
+        .nav-controls {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button.secondary {
+            background: none;
+            border: none;
+            color: var(--gray-text);
+            text-decoration: underline;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        /* 结果页面 */
+        .result-section { display: none; }
+        .chart-container {
+            margin: 30px 0;
+            aspect-ratio: 1;
+        }
+
+        .result-card {
+            border: 1px solid var(--text-color);
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .card-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--text-color);
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .school-name { font-size: 1.8rem; margin: 10px 0; }
+        .mentor-box, .book-box { margin-top: 20px; }
+        .label-small { font-weight: bold; font-size: 0.9rem; display: block; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="quiz-container">
+        <div class="progress-container">
+            <div class="progress-text" id="progress-text">QUESTION 01/20</div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 5%"></div></div>
+        </div>
+        
+        <div class="question-section">
+            <h2 id="question-text">加载中...</h2>
+            <div class="options-list" id="options-list"></div>
+        </div>
+
+        <div class="nav-controls">
+            <button class="secondary" id="prev-btn" onclick="prevQuestion()">← 上一题</button>
+            <button class="secondary" onclick="restart()">重新开始</button>
+        </div>
+    </div>
+
+    <div id="result-container" class="result-section">
+        <h1>测试结果</h1>
+        <div class="chart-container">
+            <canvas id="scoreChart"></canvas>
+        </div>
+
+        <div id="primary-results"></div>
+
+        <div style="margin-top: 50px; text-align: center;">
+            <button class="option-btn" style="width: 200px; text-align: center;" onclick="restart()">重新测试</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/** 1. 题目数据 **/
+const questions = [
+    {
+        id: 1, text: "你认为女性身体最应捍卫的主权是？",
+        options: [
+            { text: "生育决定权完全属于个人，法律必须保护", school: "自由主义" },
+            { text: "身体是父权压迫的物理基础，必须彻底夺回", school: "激进主义" },
+            { text: "身体是被话语建构的，我们应拒绝一切本质主义定义", school: "后现代主义" },
+            { text: "身体与自然相互依存，应以关怀伦理对待", school: "生态女性主义" }
+        ]
+    },
+    {
+        id: 2, text: "如果人造子宫技术成熟，你的态度是？",
+        options: [
+            { text: "女性将从生育负担中解放，获得真正自由", school: "自由主义" },
+            { text: "技术可能沦为控制生育的新工具，需警惕其政治风险", school: "激进主义" },
+            { text: "关键在于技术所有权是否归于大众，避免阶级剥削", school: "社会主义" },
+            { text: "这会瓦解“母亲”神话，拆解传统的家庭意识形态", school: "后现代主义" }
+        ]
+    },
+    {
+        id: 3, text: "对于“为母则刚”这种赞美，你认为其本质是？",
+        options: [
+            { text: "社会用荣誉感掩盖了公共托育支持的匮乏", school: "社会主义" },
+            { text: "一种对母职的道德绑架，旨在将牺牲合理化", school: "激进主义" },
+            { text: "对女性关怀能力的浪漫化，忽略了其生态价值", school: "生态女性主义" },
+            { text: "对母性本质主义的修辞，掩盖了女性主体的多样性", school: "后现代主义" }
+        ]
+    },
+    {
+        id: 4, text: "对于职场中的“玻璃天花板”，你认为首要对策是？",
+        options: [
+            { text: "完善反歧视立法，确保职场机会的绝对平等", school: "自由主义" },
+            { text: "建立社会化育儿体系，分担职场女性的家庭负担", school: "社会主义" },
+            { text: "质疑职业晋升体系中的“男性化”成功标准", school: "存在主义女性主义" },
+            { text: "建立纯女性的经济互助组织，脱离父权职场逻辑", school: "激进主义" }
+        ]
+    },
+    {
+        id: 5, text: "你如何看待女性在文学创作中频繁书写“身体”？",
+        options: [
+            { text: "这是女性寻找被压抑的真实欲望，重建心理机制", school: "精神分析女性主义" },
+            { text: "这是在解构男性凝视下的女性客体形象", school: "后现代主义" },
+            { text: "这是对女性生理独特性的政治化表达", school: "激进主义" },
+            { text: "这体现了女性与自然界感官体验的相通性", school: "生态女性主义" }
+        ]
+    },
+    {
+        id: 6, text: "在公共讨论中，男性是否可以成为“女性主义者”？",
+        options: [
+            { text: "只要认同平等原则，性别不应成为参与的障碍", school: "自由主义" },
+            { text: "男性由于其既得利益者身份，只能作为“同路人”", school: "激进主义" },
+            { text: "不仅可以，且男性也需从父权制的异化中解脱出来", school: "精神分析女性主义" },
+            { text: "性别界限本身就是流动的，不应以此划定阵营", school: "后现代主义" }
+        ]
+    },
+    {
+        id: 7, text: "你认为“美役”（过度追求容貌美）的根源在于？",
+        options: [
+            { text: "社会通过话语将女性身体商品化，用于消费和交换", school: "社会主义" },
+            { text: "女性在潜意识中内化了男性的欲望审美", school: "精神分析女性主义" },
+            { text: "一种控制女性精力和时间的政治手段", school: "激进主义" },
+            { text: "社会对“自然美”的定义本身就是一种文化霸权", school: "后现代主义" }
+        ]
+    },
+    {
+        id: 8, text: "关于“冠姓权”和“彩礼”的争议，你的倾向是？",
+        options: [
+            { text: "这是血缘父权制的残留，必须彻底废除婚姻性契约", school: "激进主义" },
+            { text: "应通过法律保障财产权利，而非纠结于象征性符号", school: "自由主义" },
+            { text: "这是劳动成果和补偿的分配问题，反映了家务劳动的无偿化", school: "社会主义" },
+            { text: "反映了社会对“根”和“所属权”的男性倾向性定义", school: "存在主义女性主义" }
+        ]
+    },
+    {
+        id: 9, text: "当女性被要求在“家庭”与“事业”间平衡时，你怎么看？",
+        options: [
+            { text: "这是一种伪命题，因为男性从未被要求做此选择", school: "存在主义女性主义" },
+            { text: "社会应将家务劳动计入GDP，由国家发放薪水", school: "社会主义" },
+            { text: "这是私人领域与公共领域二分的自由贸易遗毒", school: "自由主义" },
+            { text: "应打破这种二元对立，回归到以关怀为中心的社会结构", school: "生态女性主义" }
+        ]
+    },
+    {
+        id: 10, text: "对于跨性别女性（MtF）进入女性公共空间，你的观点是？",
+        options: [
+            { text: "性别身份是自我定义的，应基于权利平等予以尊重", school: "自由主义" },
+            { text: "女性空间应基于生理女性的共同被压抑经验而建立", school: "激进主义" },
+            { text: "这挑战了性别的本质主义，有助于瓦解二元体制", school: "后现代主义" },
+            { text: "应当关注其在资本主义结构下受到的多重边缘化", school: "社会主义" }
+        ]
+    },
+    {
+        id: 11, text: "你认为女性“从众”或“自我客体化”的心理动力是？",
+        options: [
+            { text: "长期处于客体地位导致主体意识的丧失和异化", school: "存在主义女性主义" },
+            { text: "幼儿期在俄狄浦斯期形成的对父亲/男权的认同", school: "精神分析女性主义" },
+            { text: "生存资源匮乏导致必须向权力结构靠拢以获益", school: "社会主义" },
+            { text: "通过模仿主流话语来寻求虚假的归属感", school: "后现代主义" }
+        ]
+    },
+    {
+        id: 12, text: "面对环境破坏和气候危机，女性主义者的立场应是？",
+        options: [
+            { text: "反对对自然和女性的同步掠夺，提倡尊重生命周期", school: "生态女性主义" },
+            { text: "资本主义的无限扩张是破坏环境与压迫女性的共同元凶", school: "社会主义" },
+            { text: "女性应进入科学决策高层，纠正男权的技术中心主义", school: "自由主义" },
+            { text: "质疑人类对自然的统治欲望，其根源于父权主导意识", school: "激进主义" }
+        ]
+    },
+    {
+        id: 13, text: "你认为“第二性”这一概念的核心启示在于？",
+        options: [
+            { text: "女人不是天生的，而是变成的", school: "存在主义女性主义" },
+            { text: "女性作为“他者”是为了确立男性的“主体”地位", school: "精神分析女性主义" },
+            { text: "这种他者化是由不平等的法律地位造成的", school: "自由主义" },
+            { text: "这种他者化服务于私有制下的继承逻辑", school: "社会主义" }
+        ]
+    },
+    {
+        id: 14, text: "对于色情产业（Pornography）的泛滥，你的看法是？",
+        options: [
+            { text: "它是父权制对女性性剥削的仪式化展示，应予取缔", school: "激进主义" },
+            { text: "这取决于性工作者是否自愿，应保障其合法劳动权", school: "自由主义" },
+            { text: "应关注其中的资本运作，看它如何物化底层女性", school: "社会主义" },
+            { text: "它强化了潜意识中男性的主动与女性的受虐幻象", school: "精神分析女性主义" }
+        ]
+    },
+    {
+        id: 15, text: "女性在科研、工程领域比例较低，你认为主因是？",
+        options: [
+            { text: "教育过程中对性别角色的刻板暗示和机会不均", school: "自由主义" },
+            { text: "科学范式本身就带有排斥女性体验的“男性理性”偏见", school: "生态女性主义" },
+            { text: "资源分配向男性倾斜，女性缺乏科研的物质保障", school: "社会主义" },
+            { text: "女性往往被暗示去追求更符合“阴性潜意识”的领域", school: "精神分析女性主义" }
+        ]
+    },
+    {
+        id: 16, text: "如果一位女性自愿选择回归家庭做全职太太，你认为？",
+        options: [
+            { text: "这是个人自由，只要该选择是基于充分知情的", school: "自由主义" },
+            { text: "只要父权制存在，这种所谓的“自愿”就是一种幻觉", school: "激进主义" },
+            { text: "这是逃避作为独立个体必须面对的生存焦虑", school: "存在主义女性主义" },
+            { text: "应关注这种家庭无偿劳动如何维持了整个资本主义运转", school: "社会主义" }
+        ]
+    },
+    {
+        id: 17, text: "你如何看待“女性力量”（Girl Power）被用作广告标语？",
+        options: [
+            { text: "这是一种消费女性主义，将政治反抗转化为购买力", school: "社会主义" },
+            { text: "这依然是在建构某种“符合社会期待”的女性形象", school: "后现代主义" },
+            { text: "只要能提升女性自信，商业化的传播也有积极意义", school: "自由主义" },
+            { text: "这是在挪用女性的生命能量来服务于掠夺性的市场", school: "生态女性主义" }
+        ]
+    },
+    {
+        id: 18, text: "关于女性之间的“姐妹情谊”（Sisterhood），你认同？",
+        options: [
+            { text: "它是对抗父权社会最有力的政治纽带", school: "激进主义" },
+            { text: "应超越生理特征，建立在共同的关怀伦理之上", school: "生态女性主义" },
+            { text: "它是共同面对“他者化”处境时的存在主义联结", school: "存在主义女性主义" },
+            { text: "警惕其本质化，女性内部也存在阶级、族群的巨大差异", school: "后现代主义" }
+        ]
+    },
+    {
+        id: 19, text: "对于“厌女症”在社交媒体上的盛行，你认为根本是？",
+        options: [
+            { text: "深层心理中对女性力量的恐惧与嫉妒的防御机制", school: "精神分析女性主义" },
+            { text: "通过贬低女性来维持男性群体脆弱的优越感", school: "激进主义" },
+            { text: "算法推荐和注意力经济加剧了极端观念的传播", school: "后现代主义" },
+            { text: "社会缺乏对性别平等教育的系统性法律强制力", school: "自由主义" }
+        ]
+    },
+    {
+        id: 20, text: "你理想中的未来性别关系是？",
+        options: [
+            { text: "完全消解性别二元标签，实现人的全面自由", school: "后现代主义" },
+            { text: "人类与自然、情感与理性实现和谐共生的生态文明", school: "生态女性主义" },
+            { text: "每个人都能作为绝对的主体，独立承担自己的命运", school: "存在主义女性主义" },
+            { text: "彻底消灭阶级与性别分工，按需分配劳动与关怀", school: "社会主义" }
+        ]
+    }
+];
+
+/** 2. 流派详细数据 **/
+const schoolsInfo = {
+    "自由主义": {
+        desc: "主张通过法律和制度改革，消除对女性的歧视，确保两性在公共领域拥有平等的权利、机会和地位。",
+        mentors: "玛丽·沃斯通克拉夫特、约翰·斯图尔特·密尔、贝蒂·弗里丹",
+        books: "《女权辩护》、《女性的奥秘》"
+    },
+    "激进主义": {
+        desc: "认为父权制是社会最底层的压迫结构。主张不仅要改变法律，更要彻底改变私有领域、身体和生育的控制权。",
+        mentors: "舒拉米斯·费尔斯通、凯特·米利特、安德里亚·德沃金",
+        books: "《性的辩证法》、《性政治》"
+    },
+    "社会主义": {
+        desc: "聚焦于资本主义与父权制的合谋。关注家务劳动价值、职场剥削以及经济独立对女性解放的决定性作用。",
+        mentors: "西尔维娅·费代里奇、朱丽叶·米切尔",
+        books: "《凯列班与女巫》、《妇女：最漫长的革命》"
+    },
+    "后现代主义": {
+        desc: "拒绝“女性”这一概念的本质化。认为性别是表演性的、是被语言建构的，主张拆解二元对立，拥抱多元性。",
+        mentors: "朱迪斯·巴特勒、海伦·西苏",
+        books: "《性别麻烦》、《美杜莎的笑声》"
+    },
+    "生态女性主义": {
+        desc: "发现对自然的掠夺与对女性的压迫具有同构性。主张从男性中心主义转向关怀伦理，追求与地球的和谐。",
+        mentors: "玛丽亚·米斯、范达娜·席娃",
+        books: "《生态女性主义》、《生存：妇女、生态与发展》"
+    },
+    "精神分析女性主义": {
+        desc: "从潜意识、俄狄浦斯情结和语言结构出发，探讨性别差异如何在童年心理发育中被塑造，并尝试重构主体性。",
+        mentors: "路思·伊瑞葛来、茱莉亚·克里斯蒂娃",
+        books: "《此性非一》、《恐怖的力量》"
+    },
+    "存在主义女性主义": {
+        desc: "核心在于女性如何摆脱“他者”地位，成为自己命运的绝对主体。强调自由选择与承担责任。",
+        mentors: "西蒙娜·德·波伏瓦",
+        books: "《第二性》、《名士风流》"
+    }
+};
+
+/** 3. 逻辑控制 **/
+let currentIdx = 0;
+let userAnswers = []; // 存储每题选中的流派
+
+function initQuiz() {
+    renderQuestion();
+}
+
+function renderQuestion() {
+    const q = questions[currentIdx];
+    document.getElementById('progress-text').innerText = `QUESTION ${String(currentIdx + 1).padStart(2, '0')}/20`;
+    document.getElementById('progress-fill').style.width = `${((currentIdx + 1) / 20) * 100}%`;
+    document.getElementById('question-text').innerText = q.text;
+    
+    const optionsHtml = q.options.map(opt => `
+        <button class="option-btn" onclick="handleSelect('${opt.school}')">
+            ${opt.text}
+            <span class="option-school">${opt.school}</span>
+        </button>
+    `).join('');
+    
+    document.getElementById('options-list').innerHTML = optionsHtml;
+    document.getElementById('prev-btn').style.visibility = currentIdx === 0 ? 'hidden' : 'visible';
+}
+
+function handleSelect(school) {
+    userAnswers[currentIdx] = school;
+    if (currentIdx < questions.length - 1) {
+        currentIdx++;
+        renderQuestion();
+    } else {
+        showResult();
+    }
+}
+
+function prevQuestion() {
+    if (currentIdx > 0) {
+        currentIdx--;
+        renderQuestion();
+    }
+}
+
+function restart() {
+    currentIdx = 0;
+    userAnswers = [];
+    document.getElementById('quiz-container').style.display = 'block';
+    document.getElementById('result-container').style.display = 'none';
+    initQuiz();
+}
+
+function showResult() {
+    document.getElementById('quiz-container').style.display = 'none';
+    document.getElementById('result-container').style.display = 'block';
+
+    // 计算得分
+    const scores = { "自由主义": 0, "激进主义": 0, "社会主义": 0, "后现代主义": 0, "生态女性主义": 0, "精神分析女性主义": 0, "存在主义女性主义": 0 };
+    userAnswers.forEach(s => scores[s]++);
+
+    // 转换为百分比
+    const labels = Object.keys(scores);
+    const dataValues = labels.map(l => (scores[l] / userAnswers.length) * 100);
+
+    // 绘制雷达图
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    if(window.myRadar) window.myRadar.destroy();
+    window.myRadar = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '思想倾向倾向 (%)',
+                data: dataValues,
+                backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                borderColor: '#1a1a1a',
+                borderWidth: 1,
+                pointBackgroundColor: '#1a1a1a'
+            }]
+        },
+        options: {
+            scales: {
+                r: { beginAtZero: true, max: 50, ticks: { display: false } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // 寻找主导流派
+    const maxScore = Math.max(...Object.values(scores));
+    const dominantSchools = labels.filter(l => scores[l] === maxScore);
+
+    // 渲染结果卡片
+    const resultHtml = dominantSchools.map(name => {
+        const info = schoolsInfo[name];
+        return `
+            <div class="result-card">
+                <span class="card-label">主导倾向 / Dominant Perspective</span>
+                <h2 class="school-name">${name}</h2>
+                <p>${info.desc}</p>
+                <div class="mentor-box">
+                    <span class="label-small">精神导师</span>
+                    <p style="margin:5px 0">${info.mentors}</p>
+                </div>
+                <div class="book-box">
+                    <span class="label-small">深度阅读</span>
+                    <p style="margin:5px 0; font-style: italic;">${info.books}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('primary-results').innerHTML = resultHtml;
+    window.scrollTo(0,0);
+}
+
+// 启动
+initQuiz();
+</script>
+
+</body>
+</html>
